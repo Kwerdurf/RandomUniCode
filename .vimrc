@@ -2,9 +2,10 @@ set nocompatible              " be iMproved, required
 set shell=/bin/bash
 syn on
 filetype off                  " required
-set number                    " turn on numbering
+set nu rnu					  " turn on numbering
+set cursorline
 set gdefault                  " search is global by default
-
+set numberwidth=3
 packadd termdebug             "add a package to enable gdb usage in vim
 "set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
@@ -27,14 +28,21 @@ Plugin 'tpope/vim-fugitive'
 call vundle#end()            " required
 filetype plugin indent on    " required
 "set colorscheme
-colorscheme badwolf 
+"colorscheme badwolf 
 "colorscheme gruvbox
-"colorscheme fahrenheit
+colorscheme fahrenheit
 "colorscheme desertink
 
 "NERDTree config
 autocmd vimenter * NERDTree
 map <F4> :NERDTreeToggle <CR>
+autocmd FileType nerdtree set nonu nornu
+
+"Taglist config 
+let Tlist_Use_Right_Window = 1
+autocmd vimenter * Tlist
+nnoremap <F3> :TlistToggle <CR>
+autocmd FileType taglist set nonu nornu
 "mapping for tab switching
 map <C-Tab> <C-w>w
 map <C-S-Tab> <C-w>W
@@ -49,13 +57,14 @@ autocmd filetype h  nnoremap <F6> :Termdebug %:r<CR><c-w>2j<c-w>L
 autocmd filetype c nnoremap <F6> :Termdebug %:r<CR><c-w>2j<c-w>L
 
 "open a small terminal window at the bottom of the current buffer
-nnoremap <F5> :ConqueTermSplit bash<CR><ESC><c-w>13-i<
+nnoremap <F2> :ConqueTermSplit bash<CR><ESC><c-w>13-i<
 
 
 "YCM Config
 let g:ycm_global_ycm_extra_conf = "~/.vim/bundle/YouCompleteMe/third_party/ycmd/cpp/ycm/.ycm_extra_conf.py"
 let g:ycm_autoclose_preview_window_after_insertion = 1
 let g:ycm_autoclose_preview_window_after_completion = 1
+let g:ycm_cache_omnifunc = 0
 
 "ConqueTerm Config
 let g:ConqueTerm_Color = 2         " 1: strip color after 200 lines, 2: always with color
@@ -79,3 +88,39 @@ set softtabstop=4   " Sets the number of columns for a TAB.
 "python convention is 4 spaces
 autocmd filetype python set expandtab
 
+
+"functions for updating the tags on write
+
+function! DelTagOfFile(file)
+	let fullpath = a:file
+	let cwd = getcwd()
+	let tagfilename = cwd . "/tags"		    
+	let f = substitute(fullpath, cwd . "/", "", "")
+	let f = escape(f, './')
+	let cmd = 'sed -i "/' . f . '/d" "' . tagfilename . '"'
+	let resp = system(cmd)
+endfunction
+
+function! UpdateTags()				    
+	let f = expand("%:p")
+	let cwd = getcwd()
+	let tagfilename = cwd . "/tags"
+	let cmd = 'ctags -a -f ' . tagfilename . ' --c++-kinds=+p --fields=+iaS --extra=+q ' . '"' . f . '"'
+	call DelTagOfFile(f)
+	let resp = system(cmd)
+endfunction
+
+autocmd BufWritePost *.cpp,*.h,*.c call UpdateTags()
+
+"Command for creating a shortcut to executable
+
+let g:execfile = "exec"
+
+function! SetProjectExecutable(fileName)
+	let g:execfile = a:fileName
+	execute 'nnoremap <F5> :! ./' . g:execfile . '<CR>'
+endfunction
+
+command! -nargs=* SetProjectExecutable call SetProjectExecutable( '<args>' )
+
+execute 'nnoremap <F5> :! ./' . g:execfile . '<CR>'
